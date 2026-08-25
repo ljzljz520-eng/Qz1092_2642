@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "metrics": {
+    "production_loc": 2302,
+    "production_files": 35,
+    "production_packages": 7,
+    "test_files": 9,
+    "production_functions": 182,
+    "decision_points": 314
+  },
+  "persistence": {
+    "module": "go.etcd.io/bbolt",
+    "entities": ["Record", "User", "Event", "Audit"],
+    "reopen_test": "TestPersistenceSurvivesReopen"
+  },
+  "workflows": [
+    {
+      "steps": ["receive story", "validate content", "save record and event", "acknowledge intake"],
+      "test": "TestWorkflowOne"
+    },
+    {
+      "steps": ["register reviewer", "review story", "publish approved story", "write audit trail"],
+      "test": "TestWorkflowTwo"
+    },
+    {
+      "steps": ["list persisted stories", "filter by criteria", "rank search results", "render report timeline"],
+      "test": "TestWorkflowThree"
+    }
+  ]
+}
