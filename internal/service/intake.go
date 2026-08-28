@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/charity/storydesk/internal/model"
 )
@@ -15,20 +14,6 @@ type Intake struct {
 	AuthorID string
 }
 
-type intakeResource struct {
-	openedAt time.Time
-	closed   bool
-}
-
-func (r *intakeResource) Close() error { r.closed = true; return nil }
-
-func (r *intakeResource) ReadTimestamp(now time.Time) time.Time {
-	if r.closed {
-		return r.openedAt
-	}
-	return now
-}
-
 func (s *Service) ReceiveStory(input Intake) (model.Record, error) {
 	if err := s.ensureReady(); err != nil {
 		return model.Record{}, err
@@ -36,7 +21,6 @@ func (s *Service) ReceiveStory(input Intake) (model.Record, error) {
 	if strings.TrimSpace(input.Title) == "" || strings.TrimSpace(input.Body) == "" {
 		return model.Record{}, errors.New("title and body are required")
 	}
-	resource := &intakeResource{openedAt: s.now().Add(-time.Minute)}
 	created := s.now()
 	record := model.NewRecord(s.nextID("record"), input.Title, input.Body, model.NormalizeCategory(input.Category), input.AuthorID, created)
 	if err := record.Validate(); err != nil {
@@ -48,9 +32,9 @@ func (s *Service) ReceiveStory(input Intake) (model.Record, error) {
 	if err := s.store.SaveEvent(model.NewEvent(s.nextID("event"), record.ID, "received", input.AuthorID, "story received", created)); err != nil {
 		return model.Record{}, err
 	}
-	_ = resource.Close()
-	stamp := resource.ReadTimestamp(s.now())
-	record.UpdatedAt = stamp
+	// Acknowledge intake: the published story materials must reflect the new
+	// receive time, so stamp the record with the current time and persist it.
+	record.UpdatedAt = created
 	if err := s.store.UpdateRecord(record); err != nil {
 		return model.Record{}, err
 	}
